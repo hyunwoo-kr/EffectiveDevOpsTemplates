@@ -1,4 +1,7 @@
 """Generating CloudFormation template."""
+from ipaddress import ip_network
+
+from ipify import get_ip
 
 from troposphere import (
     Base64,
@@ -10,23 +13,22 @@ from troposphere import (
     Ref,
     Template,
 )
-from troposphere.iam import(
+
+from troposphere.iam import (
     InstanceProfile,
     PolicyType as IAMPolicy,
     Role,
 )
-from awacs.aws import(
+
+from awacs.aws import (
     Action,
     Allow,
     Policy,
     Principal,
     Statement,
 )
+
 from awacs.sts import AssumeRole
-
-
-from ipaddress import ip_network
-from ipify import get_ip
 
 ApplicationName = "jenkins"
 ApplicationPort = "8080"
@@ -34,8 +36,11 @@ ApplicationPort = "8080"
 GithubAccount = "hyunwoo0614"
 GithubAnsibleURL = "https://github.com/{}/ansible".format(GithubAccount)
 
-
-
+AnsiblePullCmd = \
+    "/usr/local/bin/ansible-pull -U {} {}.yml -i localhost".format(
+        GithubAnsibleURL,
+        ApplicationName
+    )
 
 PublicCidrIp = str(ip_network(get_ip()))
 
@@ -69,6 +74,14 @@ t.add_resource(ec2.SecurityGroup(
     ],
 ))
 
+ud = Base64(Join('\n', [
+    "#!/bin/bash",
+    "yum install --enablerepo=epel -y git",
+    "pip install ansible",
+    AnsiblePullCmd,
+    "echo '*/10 * * * * {}' > /etc/cron.d/ansible-pull".format(AnsiblePullCmd)
+]))
+
 t.add_resource(Role(
     "Role",
     AssumeRolePolicyDocument=Policy(
@@ -77,32 +90,20 @@ t.add_resource(Role(
                 Effect=Allow,
                 Action=[AssumeRole],
                 Principal=Principal("Service", ["ec2.amazonaws.com"])
-                )
-            ]
-        )
+            )
+        ]
+    )
 ))
+
 t.add_resource(InstanceProfile(
     "InstanceProfile",
     Path="/",
     Roles=[Ref("Role")]
 ))
 
-AnsiblePullCmd = \
-                "/usr/local/bin/ansible-pull -U {} {}.yml -i localhost".format(GithubAnsibleURL,ApplicationName)
-
-ud = Base64(Join('\n', [
-    "#!/bin/bash",
-    "yum remove java-1.7.0-openjdk -y",
-    "yum install java-1.8.0-openjdk -y",
-    "yum install --enablerepo=epel -y git",
-    "pip install ansible",
-    AnsiblePullCmd,
-    "echo '*/10 * * * * root {}' > /etc/cron.d/ansible-pull".format(AnsiblePullCmd)
-]))
-
 t.add_resource(ec2.Instance(
     "instance",
-    ImageId="ami-ebc47185",
+    ImageId="ami-a4c7edb2",
     InstanceType="t2.micro",
     SecurityGroups=[Ref("SecurityGroup")],
     KeyName=Ref("KeyPair"),
@@ -125,4 +126,5 @@ t.add_output(Output(
     ]),
 ))
 
-print(t.to_json())
+print t.to_json()
+
