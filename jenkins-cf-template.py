@@ -10,6 +10,11 @@ from troposphere import (
     Ref,
     Template,
 )
+from troposphere import(
+    InstanceProfile,
+    PolicyType as IAMPolicy,
+    Role,
+)
 from awacs.aws import(
     Action,
     Allow,
