@@ -10,7 +10,7 @@ from troposphere import (
     Ref,
     Template,
 )
-from troposphere import(
+from troposphere.iam import(
     InstanceProfile,
     PolicyType as IAMPolicy,
     Role,
