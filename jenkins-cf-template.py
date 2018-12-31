@@ -14,7 +14,7 @@ from awacs.aws import(
     Action,
     Allow,
     Policy,
-    Principla,
+    Principal,
     Statement,
 )
 from awacs.sts import AssumeRole
